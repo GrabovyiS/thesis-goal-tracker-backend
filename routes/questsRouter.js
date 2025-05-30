@@ -9,9 +9,8 @@ function requireAuth(req, res, next) {
 }
 
 router.get("/", requireAuth, async (req, res) => {
-  const { goalId } = req.query;
   const quests = await prisma.quest.findMany({
-    where: { goalId, userId: req.user.id },
+    where: { userId: req.user.id },
     orderBy: { createdAt: "desc" },
   });
   res.json(quests);

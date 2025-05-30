@@ -1,6 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const { PrismaClient } = require("@prisma/client");
+const multer = require("multer");
+
+const upload = multer();
 const prisma = new PrismaClient();
 
 // Simple auth middleware—replace with your real one if you have it
@@ -10,17 +13,15 @@ function requireAuth(req, res, next) {
   }
   next();
 }
-
-// GET /api/tasks?questId=...
+// GET /api/tasks
 router.get("/", requireAuth, async (req, res) => {
-  const { questId } = req.query;
-  if (!questId) {
-    return res.status(400).json({ error: "Missing questId" });
-  }
   try {
     const tasks = await prisma.task.findMany({
-      where: { questId },
+      where: { userId: req.user.id },
       orderBy: { createdAt: "asc" },
+      // include: {
+      //   quest: true, // Optional: include quest data if you want context in frontend
+      // },
     });
     res.json(tasks);
   } catch (err) {
@@ -30,8 +31,9 @@ router.get("/", requireAuth, async (req, res) => {
 });
 
 // POST /api/tasks
-router.post("/", requireAuth, async (req, res) => {
+router.post("/", requireAuth, upload.array("files"), async (req, res) => {
   const { questId, title, description, type, value, max } = req.body;
+  const files = req.files;
 
   // Basic validation
   if (!questId || !title || !type) {
@@ -48,9 +50,27 @@ router.post("/", requireAuth, async (req, res) => {
         type,
         value,
         max,
-        // Properly connect relations instead of using scalar fields
         quest: { connect: { id: questId } },
         user: { connect: { id: req.user.id } },
+        files: {
+          create: files.map((file) => ({
+            name: file.originalname,
+            mimeType: file.mimetype,
+            data: file.buffer,
+          })),
+        },
+        include: {
+          files: {
+            select: {
+              id: true,
+              name: true,
+              mimeType: true,
+              createdAt: true,
+              updatedAt: true,
+              // omit `data`
+            },
+          },
+        },
       },
     });
     res.status(201).json(task);
@@ -60,22 +80,61 @@ router.post("/", requireAuth, async (req, res) => {
   }
 });
 
+router.get("/files/:id", async (req, res) => {
+  const file = await prisma.file.findUnique({
+    where: { id: req.params.id },
+  });
+
+  if (!file) return res.status(404).send("File not found");
+
+  res.setHeader("Content-Disposition", `attachment; filename="${file.name}"`);
+  res.setHeader("Content-Type", file.mimeType);
+  res.send(file.data);
+});
+
 // PUT /api/tasks/:id
-router.put("/:id", requireAuth, async (req, res) => {
+router.put("/:id", requireAuth, upload.array("files"), async (req, res) => {
   const { id } = req.params;
   const { title, description, type, value, max, done } = req.body;
+  const files = req.files;
 
   try {
     const existing = await prisma.task.findFirst({
       where: { id, userId: req.user.id },
     });
+
     if (!existing) {
       return res.status(404).json({ error: "Task not found" });
     }
+
+    // 1. Delete old files
+    await prisma.file.deleteMany({
+      where: { taskId: id },
+    });
+
+    // 2. Update task and attach new files
     const updated = await prisma.task.update({
       where: { id },
-      data: { title, description, type, value, max, done },
+      data: {
+        title,
+        description,
+        type,
+        value,
+        max,
+        done,
+        files: {
+          create: files.map((file) => ({
+            name: file.originalname,
+            mimeType: file.mimetype,
+            data: file.buffer,
+          })),
+        },
+      },
+      include: {
+        files: true,
+      },
     });
+
     res.json(updated);
   } catch (err) {
     console.error("Ошибка при обновлении задачи:", err);
