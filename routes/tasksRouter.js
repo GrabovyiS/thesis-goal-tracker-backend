@@ -110,8 +110,6 @@ router.put("/:id", requireAuth, upload.array("files"), async (req, res) => {
   const { title, description, done, max, questId, type, value } = parsed;
   const files = req.files;
 
-  console.log(files);
-
   try {
     const existing = await prisma.task.findFirst({
       where: { id },
@@ -153,7 +151,6 @@ router.put("/:id", requireAuth, upload.array("files"), async (req, res) => {
     });
 
     res.json(updated);
-    console.log(updated.files);
   } catch (err) {
     console.error("Ошибка при обновлении задачи:", err);
     res.status(500).json({ error: "Ошибка при обновлении задачи" });

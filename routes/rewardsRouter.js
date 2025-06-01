@@ -16,7 +16,17 @@ router.get("/", requireAuth, async (req, res) => {
     const rewards = await prisma.reward.findMany({
       where: { userId: req.user.id },
       orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        emoji: true,
+        title: true,
+        collected: true,
+        createdAt: true,
+        updatedAt: true,
+        questId: true, // ← this is what you want
+      },
     });
+
     res.json(rewards);
   } catch (err) {
     console.error("Error fetching rewards:", err);
@@ -26,7 +36,7 @@ router.get("/", requireAuth, async (req, res) => {
 
 // POST / create new reward
 router.post("/", requireAuth, async (req, res) => {
-  const { emoji, title } = req.body;
+  const { emoji, title, collected, questId } = req.body;
 
   if (!emoji || !title) {
     return res.status(400).json({ error: "Emoji and title are required" });
@@ -38,6 +48,7 @@ router.post("/", requireAuth, async (req, res) => {
         emoji,
         title,
         collected,
+        quest: { connect: { id: questId } },
         user: { connect: { id: req.user.id } },
       },
     });
@@ -79,8 +90,8 @@ router.delete("/:id", requireAuth, async (req, res) => {
     });
     res.status(204).end();
   } catch (err) {
-    console.error("Error deleting reward:", err);
-    res.status(500).json({ error: "Could not delete reward" });
+    console.error("Ошибка при удалении награды:", err);
+    res.status(500).json({ error: "Ошибка при удалении награды" });
   }
 });
 

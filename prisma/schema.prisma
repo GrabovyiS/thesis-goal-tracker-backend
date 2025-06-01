@@ -8,14 +8,15 @@ datasource db {
 }
 
 model User {
-  id           String        @id @default(cuid())
-  googleId     String        @unique
-  email        String
-  name         String
-  goals        Goal[]
-  quests       Quest[]
-  tasks        Task[]
-  activeTasks  ActiveTask[]
+  id          String       @id @default(cuid())
+  googleId    String       @unique
+  email       String
+  name        String
+  goals       Goal[]
+  quests      Quest[]
+  tasks       Task[]
+  activeTasks ActiveTask[]
+  reward      Reward[]
 }
 
 model Goal {
@@ -30,36 +31,46 @@ model Goal {
 }
 
 model Quest {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   title       String
   description String?
   deadline    DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  goal        Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  goal        Goal      @relation(fields: [goalId], references: [id], onDelete: Cascade)
   goalId      String
-  user        User     @relation(fields: [userId], references: [id])
+  user        User      @relation(fields: [userId], references: [id])
   userId      String
   tasks       Task[]
   rewards     Reward[]
+  logs        Log[]
 }
 
 model Task {
-  id          String   @id @default(cuid())
+  id          String      @id @default(cuid())
   title       String
   description String?
   type        String
   value       Int?
   max         Int?
-  done        Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  quest       Quest    @relation(fields: [questId], references: [id], onDelete: Cascade)
+  done        Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  quest       Quest       @relation(fields: [questId], references: [id], onDelete: Cascade)
   questId     String
-  user        User     @relation(fields: [userId], references: [id])
+  user        User        @relation(fields: [userId], references: [id])
   userId      String
   activeTask  ActiveTask?
   files       File[]
+}
+
+model Log {
+  id          String   @id @default(cuid())
+  title       String
+  description String   
+  createdAt   DateTime @default(now())
+  quest       Quest    @relation(fields: [questId], references: [id], onDelete: Cascade)
+  questId     String
 }
 
 model Reward {
@@ -76,21 +87,21 @@ model Reward {
 }
 
 model File {
-  id        String     @id @default(cuid())
+  id        String   @id @default(cuid())
   name      String
   mimeType  String
   data      Bytes
   taskId    String
-  task      Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model ActiveTask {
-  id        String   @id @default(cuid())
-  user      User     @relation(fields: [userId], references: [id])
-  userId    String
-  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  taskId    String   @unique
-  position  Int
+  id       String @id @default(cuid())
+  user     User   @relation(fields: [userId], references: [id])
+  userId   String
+  task     Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId   String @unique
+  position Int
 }
