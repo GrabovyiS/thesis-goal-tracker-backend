@@ -22,8 +22,12 @@ router.post("/", requireAuth, async (req, res) => {
     data: {
       title,
       description,
-      goalId,
-      userId: req.user.id,
+      user: {
+        connect: { id: req.user.id }, // Connect existing user
+      },
+      goal: {
+        connect: { id: goalId }, // Connect existing goal
+      },
       deadline: deadline ? new Date(deadline) : undefined,
     },
   });
@@ -31,17 +35,25 @@ router.post("/", requireAuth, async (req, res) => {
 });
 
 router.put("/:id", requireAuth, async (req, res) => {
-  const { title, description, deadline } = req.body;
+  const { title, description, deadline, goalId } = req.body;
+
   const { id } = req.params;
-  const updated = await prisma.quest.updateMany({
-    where: { id, userId: req.user.id },
+
+  const updated = await prisma.quest.update({
+    where: { id },
     data: {
       title,
       description,
       deadline: deadline ? new Date(deadline) : null,
+      user: {
+        connect: { id: req.user.id }, // Connect existing user
+      },
+      goal: {
+        connect: { id: goalId }, // Connect existing goal
+      },
     },
   });
-  res.json({ updated: updated.count > 0 });
+  res.json({ updated: updated });
 });
 
 router.delete("/:id", requireAuth, async (req, res) => {

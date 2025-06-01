@@ -22,6 +22,18 @@ router.get("/", requireAuth, async (req, res) => {
       // include: {
       //   quest: true, // Optional: include quest data if you want context in frontend
       // },
+      include: {
+        files: {
+          select: {
+            id: true,
+            name: true,
+            mimeType: true,
+            createdAt: true,
+            updatedAt: true,
+            // omit `data`
+          },
+        },
+      },
     });
     res.json(tasks);
   } catch (err) {
@@ -32,8 +44,7 @@ router.get("/", requireAuth, async (req, res) => {
 
 // POST /api/tasks
 router.post("/", requireAuth, upload.array("files"), async (req, res) => {
-  const { questId, title, description, type, value, max } = req.body;
-  const files = req.files;
+  const { questId, title, description, type, value, max, done } = req.body;
 
   // Basic validation
   if (!questId || !title || !type) {
@@ -52,23 +63,17 @@ router.post("/", requireAuth, upload.array("files"), async (req, res) => {
         max,
         quest: { connect: { id: questId } },
         user: { connect: { id: req.user.id } },
+        files: undefined,
+      },
+      include: {
         files: {
-          create: files.map((file) => ({
-            name: file.originalname,
-            mimeType: file.mimetype,
-            data: file.buffer,
-          })),
-        },
-        include: {
-          files: {
-            select: {
-              id: true,
-              name: true,
-              mimeType: true,
-              createdAt: true,
-              updatedAt: true,
-              // omit `data`
-            },
+          select: {
+            id: true,
+            name: true,
+            mimeType: true,
+            createdAt: true,
+            updatedAt: true,
+            // omit `data`
           },
         },
       },
@@ -87,7 +92,12 @@ router.get("/files/:id", async (req, res) => {
 
   if (!file) return res.status(404).send("File not found");
 
-  res.setHeader("Content-Disposition", `attachment; filename="${file.name}"`);
+  const encodedName = encodeURIComponent(file.name);
+
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename="${encodedName}"; filename*=UTF-8''${encodedName}`
+  );
   res.setHeader("Content-Type", file.mimeType);
   res.send(file.data);
 });
@@ -95,12 +105,16 @@ router.get("/files/:id", async (req, res) => {
 // PUT /api/tasks/:id
 router.put("/:id", requireAuth, upload.array("files"), async (req, res) => {
   const { id } = req.params;
-  const { title, description, type, value, max, done } = req.body;
+  const parsed = JSON.parse(req.body.data);
+
+  const { title, description, done, max, questId, type, value } = parsed;
   const files = req.files;
+
+  console.log(files);
 
   try {
     const existing = await prisma.task.findFirst({
-      where: { id, userId: req.user.id },
+      where: { id },
     });
 
     if (!existing) {
@@ -122,13 +136,16 @@ router.put("/:id", requireAuth, upload.array("files"), async (req, res) => {
         value,
         max,
         done,
-        files: {
-          create: files.map((file) => ({
-            name: file.originalname,
-            mimeType: file.mimetype,
-            data: file.buffer,
-          })),
-        },
+        files:
+          files?.length > 0
+            ? {
+                create: files.map((file) => ({
+                  name: file.originalname,
+                  mimeType: file.mimetype,
+                  data: file.buffer,
+                })),
+              }
+            : undefined,
       },
       include: {
         files: true,
@@ -136,6 +153,7 @@ router.put("/:id", requireAuth, upload.array("files"), async (req, res) => {
     });
 
     res.json(updated);
+    console.log(updated.files);
   } catch (err) {
     console.error("Ошибка при обновлении задачи:", err);
     res.status(500).json({ error: "Ошибка при обновлении задачи" });
@@ -146,8 +164,8 @@ router.put("/:id", requireAuth, upload.array("files"), async (req, res) => {
 router.delete("/:id", requireAuth, async (req, res) => {
   const { id } = req.params;
   try {
-    await prisma.task.deleteMany({
-      where: { id, userId: req.user.id },
+    await prisma.task.delete({
+      where: { id },
     });
     res.status(204).end();
   } catch (err) {
