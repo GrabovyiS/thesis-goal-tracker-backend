@@ -8,6 +8,7 @@ const goalsRouter = require("./routes/goalsRouter");
 const questsRouter = require("./routes/questsRouter");
 const tasksRouter = require("./routes/tasksRouter");
 const rewardsRouter = require("./routes/rewardsRouter");
+const logsRouter = require("./routes/logsRouter");
 const activeTaskRouter = require("./routes/activeTasksRouter");
 const cors = require("cors");
 
@@ -111,6 +112,7 @@ const app = express();
   app.use("/api/quests", questsRouter);
   app.use("/api/tasks", tasksRouter);
   app.use("/api/rewards", rewardsRouter);
+  app.use("/api/logs", logsRouter);
   app.use("/api/active-tasks", activeTaskRouter);
 
   app.listen(3000, () => {

@@ -17,6 +17,7 @@ model User {
   tasks       Task[]
   activeTasks ActiveTask[]
   reward      Reward[]
+  log         Log[]
 }
 
 model Goal {
@@ -67,10 +68,12 @@ model Task {
 model Log {
   id          String   @id @default(cuid())
   title       String
-  description String   
+  description String
   createdAt   DateTime @default(now())
   quest       Quest    @relation(fields: [questId], references: [id], onDelete: Cascade)
   questId     String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
 }
 
 model Reward {
