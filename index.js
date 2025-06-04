@@ -66,14 +66,29 @@ const app = express();
         const existing = await prisma.user.findUnique({
           where: { googleId: profile.id },
         });
-        if (existing) return done(null, existing);
+
+        const picture = profile.photos?.[0]?.value;
+
+        if (existing) {
+          if (!existing.picture && picture) {
+            await prisma.user.update({
+              where: { id: existing.id },
+              data: { picture },
+            });
+          }
+
+          return done(null, existing);
+        }
+
         const user = await prisma.user.create({
           data: {
             googleId: profile.id,
             email: profile.emails[0].value,
             name: profile.displayName,
+            picture: profile.photos?.[0]?.value,
           },
         });
+
         return done(null, user);
       }
     )
@@ -104,7 +119,7 @@ const app = express();
 
   app.get("/logout", (req, res) => {
     req.logout(() => {
-      res.redirect("/");
+      res.json({ success: true });
     });
   });
 

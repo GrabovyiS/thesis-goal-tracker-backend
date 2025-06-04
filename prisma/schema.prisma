@@ -12,6 +12,7 @@ model User {
   googleId    String       @unique
   email       String
   name        String
+  picture   String?
   goals       Goal[]
   quests      Quest[]
   tasks       Task[]
