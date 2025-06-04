@@ -44,7 +44,8 @@ router.get("/", requireAuth, async (req, res) => {
 
 // POST /api/tasks
 router.post("/", requireAuth, upload.array("files"), async (req, res) => {
-  const { questId, title, description, type, value, max, done } = req.body;
+  const { questId, title, description, type, value, max, done, completed } =
+    req.body;
 
   // Basic validation
   if (!questId || !title || !type) {
@@ -59,8 +60,10 @@ router.post("/", requireAuth, upload.array("files"), async (req, res) => {
         title,
         description,
         type,
+        done,
         value,
         max,
+        completed,
         quest: { connect: { id: questId } },
         user: { connect: { id: req.user.id } },
         files: undefined,
@@ -107,7 +110,8 @@ router.put("/:id", requireAuth, upload.array("files"), async (req, res) => {
   const { id } = req.params;
   const parsed = JSON.parse(req.body.data);
 
-  const { title, description, done, max, questId, type, value } = parsed;
+  const { title, description, done, max, questId, type, value, completed } =
+    parsed;
   const files = req.files;
 
   try {
@@ -134,6 +138,7 @@ router.put("/:id", requireAuth, upload.array("files"), async (req, res) => {
         value,
         max,
         done,
+        completed,
         files:
           files?.length > 0
             ? {

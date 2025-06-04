@@ -17,19 +17,19 @@ router.get("/", requireAuth, async (req, res) => {
 });
 
 router.post("/", requireAuth, async (req, res) => {
-  const { title, description } = req.body;
+  const { title, description, completed } = req.body;
   const goal = await prisma.goal.create({
-    data: { title, description, userId: req.user.id },
+    data: { title, description, completed, userId: req.user.id },
   });
   res.json(goal);
 });
 
 router.put("/:id", requireAuth, async (req, res) => {
-  const { title, description } = req.body;
+  const { title, description, completed } = req.body;
   const { id } = req.params;
   const updated = await prisma.goal.update({
     where: { id },
-    data: { title, description },
+    data: { title, description, completed },
   });
   res.json({ updated: updated });
 });

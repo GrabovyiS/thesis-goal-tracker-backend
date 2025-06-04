@@ -17,11 +17,12 @@ router.get("/", requireAuth, async (req, res) => {
 });
 
 router.post("/", requireAuth, async (req, res) => {
-  const { title, description, goalId, deadline } = req.body;
+  const { title, description, goalId, deadline, completed } = req.body;
   const quest = await prisma.quest.create({
     data: {
       title,
       description,
+      completed,
       user: {
         connect: { id: req.user.id }, // Connect existing user
       },
@@ -35,7 +36,7 @@ router.post("/", requireAuth, async (req, res) => {
 });
 
 router.put("/:id", requireAuth, async (req, res) => {
-  const { title, description, deadline, goalId } = req.body;
+  const { title, description, deadline, goalId, completed } = req.body;
 
   const { id } = req.params;
 
@@ -44,6 +45,7 @@ router.put("/:id", requireAuth, async (req, res) => {
     data: {
       title,
       description,
+      completed,
       deadline: deadline ? new Date(deadline) : null,
       user: {
         connect: { id: req.user.id }, // Connect existing user

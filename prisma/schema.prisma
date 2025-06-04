@@ -29,6 +29,7 @@ model Goal {
   user        User     @relation(fields: [userId], references: [id])
   userId      String
   quests      Quest[]
+  completed   Boolean  @default(false)
 }
 
 model Quest {
@@ -45,6 +46,7 @@ model Quest {
   tasks       Task[]
   rewards     Reward[]
   logs        Log[]
+  completed   Boolean   @default(false)
 }
 
 model Task {
@@ -63,6 +65,7 @@ model Task {
   userId      String
   activeTask  ActiveTask?
   files       File[]
+  completed   Boolean    @default(false)
 }
 
 model Log {
