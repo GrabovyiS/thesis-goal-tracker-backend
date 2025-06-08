@@ -14,47 +14,59 @@ router.get("/", requireAuth, async (req, res) => {
     orderBy: { position: "asc" },
     include: { task: true },
   });
+
   res.json(activeTasks);
 });
 
-router.post("/", requireAuth, async (req, res) => {
-  const { taskId } = req.body;
+router.put("/", async (req, res) => {
+  const userId = req.user.id;
+  const { taskIds } = req.body;
 
-  // Проверим, нет ли уже такой активной задачи
-  const existing = await prisma.activeTask.findFirst({
-    where: { taskId, userId: req.user.id },
-  });
-  if (existing) return res.json(existing);
+  if (!Array.isArray(taskIds)) {
+    return res.status(400).json({ error: "taskIds must be an array" });
+  }
 
-  // Найдём текущую максимальную позицию
-  const max = await prisma.activeTask.aggregate({
-    where: { userId: req.user.id },
-    _max: { position: true },
-  });
+  try {
+    // Step 1: Delete all previous active tasks for this user
+    await prisma.activeTask.deleteMany({
+      where: { userId },
+    });
 
-  const newTask = await prisma.activeTask.create({
-    data: {
-      userId: req.user.id,
-      taskId,
-      position: (max._max.position || 0) + 1,
-    },
-    include: { task: true },
-  });
+    // Step 2: Get only valid task IDs from the database
+    const existingTasks = await prisma.task.findMany({
+      where: { id: { in: taskIds } },
+      select: { id: true },
+    });
+    const existingTaskIds = existingTasks.map((t) => t.id);
 
-  res.json(newTask);
-});
+    // Optional: Warn if some task IDs were not found
+    const missingTaskIds = taskIds.filter(
+      (id) => !existingTaskIds.includes(id)
+    );
+    if (missingTaskIds.length > 0) {
+      console.warn("Some taskIds were not found in DB:", missingTaskIds);
+    }
 
-router.put("/reorder", requireAuth, async (req, res) => {
-  const { orderedTaskIds } = req.body;
-  const updates = await Promise.all(
-    orderedTaskIds.map((taskId, index) =>
-      prisma.activeTask.updateMany({
-        where: { taskId, userId: req.user.id },
-        data: { position: index + 1 },
-      })
-    )
-  );
-  res.json({ success: true });
+    // Step 3: Create active tasks in the given order, but only for valid tasks
+    for (const [index, taskId] of taskIds.entries()) {
+      if (!existingTaskIds.includes(taskId)) continue;
+
+      console.log("creating a new entry");
+
+      await prisma.activeTask.create({
+        data: {
+          userId,
+          taskId,
+          position: index,
+        },
+      });
+    }
+
+    res.status(200).json({ success: true });
+  } catch (err) {
+    console.error("Failed to update active tasks:", err);
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 router.delete("/:taskId", requireAuth, async (req, res) => {
