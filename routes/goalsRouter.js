@@ -27,11 +27,18 @@ router.post("/", requireAuth, async (req, res) => {
 router.put("/:id", requireAuth, async (req, res) => {
   const { title, description, completed } = req.body;
   const { id } = req.params;
-  const updated = await prisma.goal.update({
-    where: { id },
-    data: { title, description, completed },
-  });
-  res.json({ updated: updated });
+
+  try {
+    const updated = await prisma.goal.update({
+      where: { id },
+      data: { title, description, completed },
+    });
+
+    res.json({ updated: updated });
+  } catch (err) {
+    console.error("Ошибка при обновлении цели:", err);
+    res.status(500).json({ error: "Ошибка при обновлении цели" });
+  }
 });
 
 router.delete("/:id", requireAuth, async (req, res) => {
