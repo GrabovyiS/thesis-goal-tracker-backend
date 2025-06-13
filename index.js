@@ -11,6 +11,7 @@ const rewardsRouter = require("./routes/rewardsRouter");
 const logsRouter = require("./routes/logsRouter");
 const activeTaskRouter = require("./routes/activeTasksRouter");
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
 
 const prisma = new PrismaClient();
 
@@ -28,11 +29,17 @@ const app = express();
 (async () => {
   await enableForeignKeys(); // Enable foreign keys before the server starts
   app.use(bodyParser.json());
+  app.use(cookieParser());
   app.use(
     session({
       secret: "your_secret_key",
       resave: false,
       saveUninitialized: false,
+      cookie: {
+        httpOnly: true,
+        secure: false, // true если используешь https
+        maxAge: 24 * 60 * 60 * 1000, // 1 день
+      },
     })
   );
   app.use(passport.initialize());
@@ -46,12 +53,17 @@ const app = express();
     })
   );
 
-  // Passport config remains the same
   passport.serializeUser((user, done) => {
-    done(null, user);
+    done(null, user.id); // сохраняем только ID
   });
-  passport.deserializeUser((obj, done) => {
-    done(null, obj);
+
+  passport.deserializeUser(async (id, done) => {
+    try {
+      const user = await prisma.user.findUnique({ where: { id } });
+      done(null, user);
+    } catch (err) {
+      done(err);
+    }
   });
 
   passport.use(
@@ -67,16 +79,7 @@ const app = express();
           where: { googleId: profile.id },
         });
 
-        const picture = profile.photos?.[0]?.value;
-
         if (existing) {
-          if (!existing.picture && picture) {
-            await prisma.user.update({
-              where: { id: existing.id },
-              data: { picture },
-            });
-          }
-
           return done(null, existing);
         }
 

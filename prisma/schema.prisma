@@ -19,6 +19,7 @@ model User {
   activeTasks ActiveTask[]
   reward      Reward[]
   log         Log[]
+  role      String    @default("USER")
 }
 
 model Goal {
