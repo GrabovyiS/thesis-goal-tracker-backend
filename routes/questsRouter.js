@@ -16,6 +16,13 @@ router.get("/", requireAuth, async (req, res) => {
   res.json(quests);
 });
 
+router.get("/all", requireAuth, async (req, res) => {
+  const quests = await prisma.quest.findMany({
+    orderBy: { createdAt: "desc" },
+  });
+  res.json(quests);
+});
+
 router.post("/", requireAuth, async (req, res) => {
   const { title, description, goalId, deadline, completed } = req.body;
   const quest = await prisma.quest.create({

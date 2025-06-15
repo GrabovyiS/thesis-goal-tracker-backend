@@ -120,10 +120,57 @@ const app = express();
     res.json(req.user);
   });
 
+  app.put("/me/subscribe", async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: "Not authenticated" });
+
+    const userId = req.user.id;
+
+    try {
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      if (user.role === "SUBSCRIBER" || user.role === "ADMIN") {
+        return res
+          .status(400)
+          .json({ message: "User is already subscribed or is an admin" });
+      }
+
+      const updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: { role: "SUBSCRIBER" },
+      });
+
+      // Also update req.user in session
+      req.login(updatedUser, (err) => {
+        if (err) {
+          return res.status(500).json({ error: "Session update failed" });
+        }
+        res.json({ message: "Subscription successful", user: updatedUser });
+      });
+    } catch (error) {
+      console.error("Error upgrading user role:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.get("/logout", (req, res) => {
     req.logout(() => {
       res.json({ success: true });
     });
+  });
+
+  app.get("/api/users", async (req, res) => {
+    try {
+      const users = await prisma.user.findMany();
+      console.log(users);
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
   });
 
   app.use("/api/goals", goalsRouter);

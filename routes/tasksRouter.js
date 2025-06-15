@@ -42,6 +42,34 @@ router.get("/", requireAuth, async (req, res) => {
   }
 });
 
+// GET /api/tasks/all
+router.get("/all", requireAuth, async (req, res) => {
+  try {
+    const tasks = await prisma.task.findMany({
+      orderBy: { createdAt: "asc" },
+      // include: {
+      //   quest: true, // Optional: include quest data if you want context in frontend
+      // },
+      include: {
+        files: {
+          select: {
+            id: true,
+            name: true,
+            mimeType: true,
+            createdAt: true,
+            updatedAt: true,
+            // omit `data`
+          },
+        },
+      },
+    });
+    res.json(tasks);
+  } catch (err) {
+    console.error("Ошибка при получении задач:", err);
+    res.status(500).json({ error: "Ошибка при получении задач" });
+  }
+});
+
 // POST /api/tasks
 router.post("/", requireAuth, upload.array("files"), async (req, res) => {
   const { questId, title, description, type, value, max, done, completed } =

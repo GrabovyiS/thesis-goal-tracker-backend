@@ -16,7 +16,24 @@ router.get("/", requireAuth, async (req, res) => {
   res.json(goals);
 });
 
+router.get("/all", requireAuth, async (req, res) => {
+  const goals = await prisma.goal.findMany({
+    orderBy: { createdAt: "desc" },
+  });
+  res.json(goals);
+});
+
 router.post("/", requireAuth, async (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Unauthorized" });
+
+  const existingGoals = await prisma.goal.findMany({
+    where: { userId: req.user.id },
+  });
+
+  if (req.user.role !== "SUBSCRIBER" && existingGoals.length >= 2) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+
   const { title, description, completed } = req.body;
   const goal = await prisma.goal.create({
     data: { title, description, completed, userId: req.user.id },
